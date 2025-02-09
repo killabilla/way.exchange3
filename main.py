@@ -21,7 +21,19 @@ def get_exchange_rate(base_currency:str, quote_currency: str) -> Decimal:
     }
 
     response = requests.get(base_url, headers=headers, params=params)
+
+    # Проверка успешности запроса
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail= "Ошибка при получении данных с CoinMarketCap") 
+
     data = response.json()
+
+    # Отладка : выводим данные ответа для анализа
+    print(data)
+
+    # Проверяем, что в ответе есть ключ 'data'
+    if 'data' not in data:
+        raise HTTPException(status_code=500, detail= "Ответ от API не содержит данных") 
 
     # Находим нужные данные для пары обмена
     exchange_rate = None

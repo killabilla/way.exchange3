@@ -40,9 +40,9 @@ async def exchange(amount: float, pair: str):
             "USDT-BTC": ("USDT", "BTC"),
             "BTC-USDT": ("BTC", "USDT"),
             "USDT-ETH": ("USDT", "ETH"),
-            "ETH-USDT": ("ETH", "BTC"),
-            "USDT-TON": ("USDT", "ETH"),
-            "TON-USDT": ("TON", "BTC"),
+            "ETH-USDT": ("ETH", "USDT"),
+            "USDT-TON": ("USDT", "TON"),
+            "TON-USDT": ("TON", "USDT"),
         }
 
     if pair not in pairs:

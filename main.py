@@ -17,7 +17,7 @@ def get_exchange_rate(base_currency:str, quote_currency: str) -> Decimal:
     params = {
     'start' : '1',
     'limit': '20',
-    'convert' 'USD',
+    'convert': 'USD',
     }
 
     response = requests.get(base_url, headers=headers, params=params)
@@ -70,9 +70,9 @@ async def exchange(usdt_amount: float, pair: str):
     exchange_rate = get_exchange_rate(base_currency, quote_currency)
 
     # Считаем сколько пользователь получит после обмена с учетом комиссии
-    comission = Decimal("0.005")
+    commission = Decimal("0.005")
     transaction_amount = Decimal(usdt_amount) * exchange_rate
-    transaction_amount -= transaction_amount * comission
+    transaction_amount -= transaction_amount * commission
 
     # Округление до 10 знаков после запятой
     transaction_amount = transaction_amount.quantize(Decimal("0.0000000001"), rounding=ROUND_DOWN)

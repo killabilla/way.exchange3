@@ -16,4 +16,4 @@ async def exchange(usdt_amount: float):
         raise HTTPException(status_code=400,detail="Сумма должна быть больше 0")
     
     btc_amount = usdt_amount * 0.00003
-    return {"btc_amount": btc_amount}
+    return {"btc_amount": "{:.8f}".format(btc_amount)}

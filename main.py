@@ -1,78 +1,50 @@
 from fastapi import FastAPI, HTTPException
 from decimal import Decimal, ROUND_DOWN
-import requests
 
 app = FastAPI()
 
-cmc_api = "00bbfede-4e31-4ff0-bbac-5adcc5a0ebc1"
-base_url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+#Курс фиксируется в приложении и имитируется получение его от CoinMarketCap
+#Структура данных как из API
 
-def get_exchange_rate(base_currency:str, quote_currency: str) -> Decimal:
-    #Получаем курс через api coinmarketcap
-    headers = {
-        "Coinmarketcap_api": cmc_api,
-        "Accept": "application/json",
-    }
+fixed_exchange_data = {
+    "USDT":{"price":1.00},
+    "BTC":{"price":97000.00},         
+    "ETH":{"price":2600.00},
+    "TON":{"price":3.80},      
+}
 
-    params = {
-    'start' : '1',
-    'limit': '20',
-    'convert': 'USD',
-    }
+def get_exchange_rate(base_currency: str, quote_currency: str) -> Decimal:
 
-    response = requests.get(base_url, headers=headers, params=params)
+    if base_currency not in fixed_exchange_data or quote_currency not in fixed_exchange_data:
+        raise HTTPException(status_code=404, detail="Не удалось найти данные для одной из валют")
+    
+    base_price = Decimal(fixed_exchange_data[base_currency]["price"])
+    quote_price = Decimal(fixed_exchange_data[quote_currency]["price"])
 
-    # Проверка успешности запроса
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail= "Ошибка при получении данных с CoinMarketCap") 
-
-    data = response.json()
-
-    # Отладка : выводим данные ответа для анализа
-    print(data)
-
-    # Проверяем, что в ответе есть ключ 'data'
-    if 'data' not in data:
-        raise HTTPException(status_code=500, detail= "Ответ от API не содержит данных") 
-
-    # Находим нужные данные для пары обмена
-    exchange_rate = None
-    for crypto in data['data']:
-        if crypto['symbol'] == base_currency:
-                base_price = crypto['quote']['USD']['price']
-        if crypto['symbol'] == base_currency:
-            quote_price = crypto['quote']['USD']['price']
-
-        if base_price and quote_price:
-            exchange_rate = Decimal(quote_price) / Decimal(base_price)
-            break
-
-    if exchange_rate is None:
-        raise HTTPException(status_code=404, detail= "Не удалось получить курс для выбранных валют")
-
+    exchange_rate = base_price / quote_price
     return exchange_rate
-
 
 @app.get("/")
 async def root():
     return {"Hi"}
 
 @app.get("/exchange")
-async def exchange(usdt_amount: float, pair: str):
-    if usdt_amount <= 0:
+async def exchange(amount: float, pair: str):
+#amount - валюта отправления, pair - валюта получения в паре. Комиссия забирается с суммы отправления
+
+    if amount <= 0:
         raise HTTPException(status_code=400,detail="Сумма должна быть больше 0")
 
     # Выбираем пару
     pairs = {
             "USDT-BTC": ("USDT", "BTC"),
-            "USDT-BTC": ("USDT", "BTC"),
+            "BTC-USDT": ("BTC", "USDT"),
             "USDT-ETH": ("USDT", "ETH"),
             "ETH-USDT": ("ETH", "BTC"),
             "USDT-TON": ("USDT", "ETH"),
             "TON-USDT": ("TON", "BTC"),
         }
 
-    # Проверяем корректность пары
     if pair not in pairs:
         raise HTTPException(status_code=400, detail="Неверная валютная пара")
     
@@ -81,10 +53,12 @@ async def exchange(usdt_amount: float, pair: str):
     # Получаем курс обмена для пары
     exchange_rate = get_exchange_rate(base_currency, quote_currency)
 
-    # Считаем сколько пользователь получит после обмена с учетом комиссии
     commission = Decimal("0.005")
-    transaction_amount = Decimal(usdt_amount) * exchange_rate
-    transaction_amount -= transaction_amount * commission
+
+    # Вычитаем комиссию
+    effective_amount = Decimal(str(amount)) * (Decimal("1")) - commission
+
+    transaction_amount = effective_amount * exchange_rate
 
     # Округление до 10 знаков после запятой
     transaction_amount = transaction_amount.quantize(Decimal("0.0000000001"), rounding=ROUND_DOWN)
@@ -92,8 +66,8 @@ async def exchange(usdt_amount: float, pair: str):
     return {
         "base_currency": base_currency,
         "quote_currency": quote_currency,
-        "input_amount": usdt_amount,
+        "input_amount": amount,
         "exchange_rate": float(exchange_rate),
+        "commission_percent": float(commission*100),
         "transaction_amount": float(transaction_amount),
-        "commission": float(commission * 100),
     }

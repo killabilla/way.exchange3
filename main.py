@@ -1,7 +1,21 @@
 from fastapi import FastAPI, HTTPException
 from decimal import Decimal, ROUND_DOWN
+import subprocess
+import os
+
 
 app = FastAPI()
+
+# Webhook-запрос от GitHub Actions
+@app.post("/deploy")
+async def deploy():
+    try:
+        # git pull для обновления кода из репозитория
+        result = subprocess.run(["git", "pull"], check=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return {"status": "success", "output": result.stdout.decode()}
+    except subprocess.CalledProcessError as e:
+        return {"status": "failed", "error": e.stderr.decode()}
 
 #Курс фиксируется в приложении и имитируется получение его от CoinMarketCap
 #Структура данных как из API
@@ -16,7 +30,7 @@ fixed_exchange_data = {
 def get_exchange_rate(base_currency: str, quote_currency: str) -> Decimal:
 
     if base_currency not in fixed_exchange_data or quote_currency not in fixed_exchange_data:
-        raise HTTPException(status_code=404, detail="Не удалось найти данные для одной из валют")
+        raise HTTPException(status_code=404, detail="Данные для одной из валют не найдены")
     
     base_price = Decimal(fixed_exchange_data[base_currency]["price"])
     quote_price = Decimal(fixed_exchange_data[quote_currency]["price"])
